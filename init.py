@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Intentionally broken Python file for CI/CD testing.
-DO NOT use this code in production.
+Previously-broken Python file, now fixed for CI/CD testing purposes.
 """
 
 import os
@@ -10,67 +9,61 @@ import json
 import subprocess
 
 
-API_KEY = "hardcoded-secret-12345"  # security issue
+API_KEY = os.environ.get("API_KEY", "")
 DEBUG = True
 
 
 def calculate_total(items):
     total = 0
     for item in items:
-        total += item["price"]
+        total += float(item["price"])
     return total
 
 
 def get_user_data(user_id):
-    # SQL injection risk / bad practice
-    query = "SELECT * FROM users WHERE id = '%s'" % user_id
-    print("Executing:", query)
+    # Parameterized query instead of string interpolation
+    query = "SELECT * FROM users WHERE id = %s"
+    print("Executing:", query, "with params:", (user_id,))
 
-    # Command injection risk / bad practice
-    subprocess.call("echo " + user_id, shell=True)
+    # No shell=True, argument passed as a list to avoid command injection
+    subprocess.call(["echo", user_id])
 
-    return {"id": user_id, "password": "plaintext-password"}
-
-
-def unused_function():
-    x = 123
-    y = 456
-    return None
+    return {"id": user_id, "password": os.environ.get("USER_PASSWORD", "")}
 
 
 def main():
-    password = "super-secret-password"
+    password = os.environ.get("APP_PASSWORD", "")
 
     users = [
         {"name": "Alice", "price": 10},
-        {"name": "Bob", "price": "20"},  # type error at runtime
+        {"name": "Bob", "price": "20"},
     ]
 
     print("Total:", calculate_total(users))
 
-    # Undefined variable
-    print(undefined_variable)
-
-    # Syntax/logic problems for linters and static analysis
-    if DEBUG == True:
+    if DEBUG:
         print("Debug mode enabled")
 
     try:
         data = json.loads("{invalid json}")
-    except:
-        pass
+    except json.JSONDecodeError as exc:
+        print("Failed to parse JSON:", exc)
 
-    # Missing file handling
-    with open("/tmp/nonexistent_file.txt", "r") as f:
-        print(f.read())
+    file_path = "/tmp/nonexistent_file.txt"
+    if os.path.exists(file_path):
+        with open(file_path, "r") as f:
+            print(f.read())
+    else:
+        print(f"File not found: {file_path}")
 
-    get_user_data(sys.argv[1])
+    if len(sys.argv) > 1:
+        get_user_data(sys.argv[1])
+    else:
+        print("Usage: init.py <user_id>")
 
-    # Deliberately bad comparison
-    if password is "super-secret-password":
+    if password == "correct-password":
         print("Authenticated")
 
 
 if __name__ == "__main__":
     main()
-
